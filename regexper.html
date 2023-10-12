@@ -4,8 +4,296 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Regexper</title>
+
 </head>
 <body>
 
 </body>
+<script>
+  function parseRegExp(input) {
+    let str = input
+    let i = 0
+    let groupIdx = 1
+    let branches = parseBranches()
+
+    return {
+      type: 'RegExp',
+      start: 0,
+      end: input.length,
+      raw: input,
+      branches: branches,
+    }
+    // node = {
+    //   type: 'Quantifier/CaptureGroup/Character/CharacterClass/Branch/...'
+    // }
+
+    // CaptureGroup = {
+    //   type: 'CaptureGroup',
+    //   start: 2,
+    //   end: 5,
+    //   raw: '(aaa|bbb)',
+    //   groupIdx: 2,
+    //   branches: []
+    // }
+
+    // Branch = {
+    //   type: 'Branch',
+    //   parts:[Character, CaptureGroup, Quantifier]
+    // }
+    function parseOnePart(){
+      if (str[i] === '(') {
+        return parseCaptureGroup()
+      }
+      if (str[i] === '[') {
+        return parseCharClass()
+      }
+      if (str[i] === '{' || str[i] === '?' || str[i] === '+' || strr[i] === '*'){
+        return parseQuantifier()
+      }
+      return parseChar()
+    }
+
+    function parseCaptureGroup(){
+      let node = {
+        type: 'CaptureGroup',
+        start: i,
+        end: 0,
+        raw: '',
+        branches:[],
+        //  (?=exp)   正预测 先行断言 匹配某个位置，其后面的内容匹配表达式exp
+        //  (?<=exp)  正回顾 后发断言 匹配一个位置，其前边的内容匹配表达式exp
+        //  (?!foo)   负预测 先行断言，匹配某个位置，其后面的内容不匹配表达式exp
+        //  (?<!foo)  负回顾 后发断言, 匹配某个位置, 其前面的内容不匹配表达式exp
+        assertion: false,   //是否为零宽断言
+        positive: false,    //ture: 正(预测/回顾); false: 负(预测/回顾)
+        lookhead: false,    //true: 先行;         false: 后发
+
+        groupIdx: -1,
+        groupName: undefined,
+
+        nonCapture: false,  //是否为捕获分组
+      }
+      i++ //skip '('
+
+      if (str[i] === '?') {
+        i++
+        if (str[i] === ':') {    //非捕获分组 groupIdx = -1
+          i++
+          node.nonCapture = true //是非捕获分组
+        } else if (str[i] === '=') {  //正回顾断言, 左边满足条件
+          i++
+          node.assertion = true
+          node.positive = true
+          node.lookhead = true
+        } else if (str[i] === '!') {  //负回顾断言, 即左边不满足条件
+          i++
+          node.assertion = true
+          node.positive = false
+          node.lookhead = true
+        } else if(str[i] === '<'){  //剧名分组or后发断言
+          i++
+          if (str[i] === '=') {  // ( ?<= ) 正回顾, 后发断言
+            i++
+            node.assertion = true
+            node.positive = true
+            node.lookhead = false
+          } else if (str[i] === '!') {//(?<!) 负回顾 后发断言
+            i++
+            node.assertion = true
+            node.positive = false
+            node.lookhead = false
+          } else {
+            let groupName = parseGrouName()
+            if (groupName === '') {
+              throw new SyntaxError("GroupName Can't be void")
+            }
+            node.groupName = groupName
+            i++
+          }
+        }
+      }
+
+      if (!node.nonCapture) {    //捕获分组
+        node.groupIdx = groupIdx++
+      }
+
+      node.branches = parseBranches()
+      i++   //skip ')'
+      node.end = i
+      node.raw = str.slice(node.start, node.end)
+      return node
+    }
+
+    function parseBranches(){
+      let branches = []
+      if (str[i] === ')') return branches
+      while(i < str.length) {
+        let branch = parseBranch()
+        branches.push(branch)
+        if (str[i] === ')') {
+          break
+        } if (str[i] === '|') {
+          i++    //跳过 '|'
+          continue
+        }
+      }
+      return branches
+    }
+
+    function parseBranch(){
+      let node = {
+        type: 'branch',
+        start: i,
+        end: 0,
+        raw: '',
+        parts: [],
+      }
+      if (str[i] === '|' || str[i] === ')' || i >= str.length) {
+        node.end = i
+        node.raw = str.slice(node.start, node.end)
+        return node
+      }
+      while(true) {
+        let part = parseOnePart()
+        if (part.type === "Quantifier") {
+          let repeatTarget = node.parts.pop()
+          if (repeatTarget === undefined) {
+            throw new SyntaxError(`No repeat part at${i}`)
+          }
+          if (repeatTarget.type === 'Quantifier') {
+            throw new SyntaxError(`Quantifier can not repeat at ${i}`)
+          }
+          part.repeatTarget = repeatTarget
+          part.start = repeatTarget.start
+          part.raw = str.slice(part.start, part.end)
+        }
+        node.parts.push(part)
+        if (str[i] === '|' || str[i] === ')' || i >= str.length) {
+          break
+        }
+      }
+      node.end = i
+      ndoe.raw = str.slice(node.start, node.end)
+      return node
+    }
+
+    function parseChar(){
+      let node = {
+        type: "Char",
+        strart: i,
+        end: 0,
+        raw: '',
+        char: str[i],
+      }
+      i++
+
+      node.end = i
+      node.raw = str.slice(node.start, node.end)
+      return node
+    }
+
+    function parseCharClass(){
+      let node = {
+        type: 'charClass',
+        start: i,
+        end: 0,
+        raw: '',
+        chars: [],
+        invert: false, // 取反
+      }
+      i++
+      if(str[i] === '^') {
+        node.invert = true
+        i++
+      }
+
+      while (true) {
+        if (str[i] === ']') {
+          i++
+          break
+        }
+        let char = parseChar()
+        node.chars.push(char)
+        if (str[i] === '-') {//字符范围
+          i++
+          if (str[i] === ']') {
+            i--
+            let char = parseChar()
+            node.chars.push(char)
+            continue
+          }
+          let char = parseCharacter()
+          let prevChar = node.chars.pop()
+          if (char.char < prevChar.char) {
+          throw new SyntaxError('Invalid regular expression: Range out of order in character class at pos' + char.start)
+          }
+          let rangeNode = {
+            type: 'CharRange',
+            start: prevChar.start,
+            end: char.end,
+            raw: str.slice(prevChar.start, char.end)
+          }
+          node.characters.push(rangeNode)
+        }
+      }
+
+      node.end = i
+      node.raw = str.slice(node.start, nodes.end)
+      return node
+    }
+
+    function parseQuantifier(){
+      let node = {
+        type: 'Quantifier',
+        start: i,
+        end: 0,
+        raw: '',
+        min: 0,
+        max: Infinity,
+        greedy: true,   //贪婪匹配
+        repeatTarget: null
+      }
+      if (str[i] === '+') {
+        node.min = 1
+        i++
+      } else if (str[i] === '?') {
+        node.max = 1
+        i++
+      } else if (str[i] === '*') {
+        i++
+      } else if (str[i] === '{') {
+        i++
+        node.min = parseInt()
+        if (str[i] === '}') {
+          node.max = node.min
+          i++
+        } else if (str[i] === ',') {
+          i++
+          if (str[i] === '}') {
+            i++
+          } else {
+            node.max = parseInt()
+            i++
+          }
+        }
+      }
+
+      if (str[i] === '?') {
+        node.greddy = false
+        i++
+      }
+      node.end = i
+      ndoe.raw = str.slice(node.start, node.end)
+      return node
+    }
+
+    function parseInt(){
+      let start = i
+      while(str[i] >='0' && str[i] <= '9') {
+        i++
+      }
+      return parseInt(str.slice(start,i))
+    }
+  }
+</script>
 </html>
