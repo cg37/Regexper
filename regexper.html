@@ -399,6 +399,294 @@
     function drawCharClassGraph(node) {
       let graphs = node.characters.map(drawCharGraph)
       let boxes = graphs.map((it) => it.getBBox())
+
+      let width = Math.max(...boxes.map((it)=>it.width)) + 2 * graphPadding
+      let height = boxes.map(it => it.height).reduce(add, 0) + graphPadding * (boxes.length + 1)
+
+      let rect = svgElt('rect', {
+        width: width,
+        height: height,
+        fill: "#cbcbba",
+        rx: 3,
+      })
+
+      let g = svgElt('g')
+      g.appendChild(rect)
+
+      let y = graphPadding
+      graphs.forEach((graph, i) => {
+        graph.setAttribute('transfrom', `translate(${(width - boxes[i].width) / 2}, ${y})`)
+        y = y + boxes[i].height + graphPadding
+        g.appendChild(graph)
+      })
+
+      return g
+    }
+
+    function drawBranchGraph(node) {
+      let graphs = node.parts.map(drawNodeGraph)
+      let boxes = graphs.map(it => it.getBBox())
+
+      let width = boxes.map(it=>it.width).reduce(add, 0) + graphPadding * (graphs.length + 1)
+      let height = Math.max(...boxes.map(it => it.height)) + 2 * graphPadding
+
+      let react = svgElt('rect', {
+        width,
+        height,
+        fill: 'none',
+        rx: 3
+      })
+
+      let g = svgElt('g')
+      g.appendChild(rect)
+
+      let line = svgElt('line', {
+        x1: 0,
+        y1: height/ 2,
+        x2: width,
+        y2: width / 2,
+        stroke: 'black',
+        'stroke-width': lineWidth
+      })
+      g.appendChild(line)
+
+      let x = graphPadding
+      graphs.forEach((graph, i) => {
+        graph.setAttribute('transform', `translate(${x}, ${(height - boxes[i].height) / 2})`)
+        x = x + boxes.width + graphPadding
+        g.appendChild(graph)
+      })
+
+      return g
+    }
+
+    function drawBranchesGraph(nodes) {
+      let graphs = nodes.map(drawBranchGraph)
+      let boxes = graphs.map(it => it.getBBox())
+
+      let width = Math.max(...boxes.map(it => it.width)) + 4 * graphPadding
+      let height = boxes.map(it=>it.height).reduce(add, 0) + graphPadding * (boxes.length + 1)
+
+      let rect = svgElt('rect', {
+        width: width,
+        height: height,
+        fill: 'none',
+        rx: 3,
+      })
+
+      let g = svgElt('g')
+      g.appendChild(rect)
+
+      let y = graphPadding
+
+      graphs.forEach((graph, i) => {
+        let x = (width - boxes[i].width) / 2
+        graph.setAttribute('transform', `traanslate(${x}, ${y})`)
+
+        let line = svgElt('path', {
+          d: `M 0 ${height / 2}
+              C ${graphPadding} ${height / 2} ${graphPadding} ${y + boxes[i].height / 2} ${graphPadding + graphPadding} ${y + boxes[i].height / 2}
+              L ${x} ${y + boxes[i].height / 2}
+
+              M ${width} ${height / 2}
+              C ${width - graphPadding} ${height / 2} ${width - graphPadding} ${y + boxes[i].height / 2} ${width - (graphPadding + graphPadding)} ${y + boxes[i].height / 2}
+              L ${width - x} ${y + boxes[i].height / 2}
+          `,
+          fill: 'none',
+          stroke: 'black',
+          'stroke-width': 'lineWidth'
+        })
+
+        g.appendChild(graph)
+        g.appendChild(line)
+
+        x = y + boxes[i].height + graphPadding
+      })
+
+      return g
+    }
+
+    function drawCaptureGroupGraph(node) {
+      let branchesGraph = drawBranchesGraph(node, branches)
+      let box = branchesGraph.getBBox()
+
+      let width = box.width + 2 * graphPadding
+      let height = box.height
+
+      let rect = svgElt('rect',{
+        width,
+        height,
+        rx: 3,
+        stroke: '#908c83',
+        'stroke-width': lineWidth,
+        fill: 'none',
+        "stroke-dasharray": '6 2'
+      })
+      let g = svgElt('g')
+      g.appendChild(rect)
+
+      let line = svgElt('path', {
+        fill: "none",
+        stroke: "black",
+        "stroke-width": lineWidth,
+        d: `
+          M 0 ${height / 2} L ${graphPadding} ${height / 2}
+          M ${width} ${height / 2} L ${width - graphPadding} ${height / 2}
+        `
+      })
+      g.appendChild(line)
+
+      branchesGraph.setAttribute('transform', `translate(${graphPadding}, 0)`)
+
+      g.appendChild(branchesGraph)
+
+      let label = svgElt('text', {
+        x: 0,
+        y: 0,
+        "font-size": 10,
+        "dominant-baseline": "text-before-edge",
+      })
+
+      label.textContent = "Group #" + node.grapuIndex
+      g.appendChild(label)
+
+      return g
+    }
+
+    function drawQuantifierGraph(node) {
+      let targetGraph = drawNodeGraph(node.repeatTarget)
+      let box = targetGraph.getBBox()
+
+      let width = box.width + graphPadding * 4
+      let height = box.height + graphPadding * 2
+
+      let g = svgElt('g')
+
+      let rect = svgElt('rect',{
+        width,
+        height,
+        fill: 'none'
+      })
+
+      g.appendChild
+
+      if (node.min === 0) {
+        let upLine = svgElt('path', {
+          fill: "none",
+          stroke: "black",
+          "stroke-width": lineWidth,
+
+          d: `
+            M 0 ${height / 2} A ${graphPadding} ${graphPadding} 0 0 0 ${graphPadding} ${height / 2 - graphPadding}
+            L ${graphPadding} ${graphPadding}
+            A ${graphPadding} ${graphPadding} 0 0 1 ${graphPadding * 2} 0
+            L ${width - 2 * graphPadding} 0
+            A ${graphPadding} ${graphPadding} 0 0 1 ${width - graphPadding} ${graphPadding}
+            L ${width - graphPadding} ${height / 2 - graphPadding}
+            A ${graphPadding} ${graphPadding} 0 0 0 ${width} ${height / 2}
+          `
+        })
+        g.appendChild(upLine)
+      }
+
+      if (node.max > 1) {
+        let downLine = svgElt('path', {
+          fill: 'none',
+          stroke: "black",
+          "stroke-width": lineWidth,
+          d: `
+            M ${width - 2 * graphPadding} ${height / 2}
+            A ${graphPadding} ${graphPadding} 0 0 1 ${width - graphPadding} ${height / 2 + graphPadding}
+            L ${width - graphPadding} ${height - graphPadding}
+            A ${graphPadding} ${graphPadding} 0 0 1 ${width - graphPadding * 2} ${height}
+            L ${2 * graphPadding} ${height}
+            A ${graphPadding} ${graphPadding} 0 0 1 ${graphPadding} ${height - graphPadding}
+            L ${graphPadding} ${height / 2 + graphPadding}
+            A ${graphPadding} ${graphPadding} 0 0 1 ${2 * graphPadding} ${height / 2}
+          `
+        })
+        g.appendChild(downLine)
+      }
+
+      let line = svgElt('path', {
+        fill: "none",
+        stroke: "black",
+        "stroke-width": lineWidth,
+        d: `
+          M 0 ${height / 2} L ${2 * graphPadding} ${height / 2}
+          M ${width} ${height / 2} L ${width - 2 * graphPadding} ${height / 2}
+        `
+      })
+      g.appendChild(line)
+
+      targetGraph.setAttribute("transform", `translate(${2 * graphPadding}, ${(height - box.height) / 2})`)
+
+      return g
+    }
+
+    function drawRegExpGraph(node){
+      let branchesGraph = drawBranchesGraph(node.branches)
+      let box = branchesGraph.getBBox()
+
+      let g = svgElt('g')
+
+      let width = box.width + 4 * graphPadding
+      let height = box.height + 2 * graphPadding
+
+      let rect = svgElt("rect", {
+        width,
+        height,
+        fill: "none",
+      })
+
+      g.appendChild(rect)
+
+      let line = svgElt("path", {
+        fill: "none",
+        stroke: "black",
+        "stroke-width": lineWidth,
+        d: `
+          M ${graphPadding} ${height / 2} L ${2 * graphPadding} ${height / 2}
+          M ${width - graphPadding} ${height / 2} L ${width - 2 * graphPadding} ${height / 2}
+        `
+      })
+
+      g.appendChild(line)
+
+      let leftCircle = svgElt("circle", {
+        cx: width - graphPadding,
+        cy: height / 2,
+        r: 5,
+        fill: "#6b6659",
+        stroke: "black"
+      })
+      g.appendChild(rightCircle)
+
+      branchesGraph.setAttribute('transform', `translate(${2 * graphPadding}, ${graphPadding})`)
+      g.appendChild(branchesGraph)
+
+      return g
+    }
+
+    function drawNodeGraph(node) {
+      if (Array.isArray(node)) {
+        return drawBranchesGraph(node)
+      }
+      if (node.type === "Quantifier") {
+        return drawQuantifierGraph(node)
+      }
+      if (node.type === "Character") {
+        return drawCharGraph(node)
+      }
+      if (node.type === "CharacterClass") {
+        return drawCharClassGraph(node)
+      }
+      if (node.type === "Branch") {
+        return drawBranchGraph(node)
+      }
+      if (node.type === "CaptureGroup") {
+        return drawCaptureGroupGraph(node)
+      }
     }
   }
 </script>
