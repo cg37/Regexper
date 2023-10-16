@@ -3,6 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.js"></script>
+  <body class="bg-slate-300">
+    <h1 class="py-10 px-8 bg-sky-300 text-5xl">
+      正则表达式可视化
+      <small class="block text-base text-slate-500">
+
+      </small>
+      "Some people when Confronted with a problem, think 'I know,
+      I'will use Regular Expression.' Now they have two problem."
+      - Jamie Zawinski
+    </h1>
+
+    <div class="p-8 bg-slate-300">
+      <textarea class="w-full block mb-4 text-2xl font-mono bg-slate-200"
+                autocomplete="false" spellcheck="false" type="text"
+                id="regularExpressionInput">^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@#$%^&+=])(?!.*\s).{8,16}$</textarea>
+      <section class="flex space-x-4">
+        <button class="bg-blue-400 px-4 py-2 mr-auto" onClick="draw()">绘制</button>
+        <button class="bg-blue-400 px-4 py-2 " onClick="download()">下载SVG</button>
+        <button class="bg-blue-400 px-4 py-2 " onClick="downloadPNG">下载PNG</button>
+        <button class="bg-blue-400 px-4 py-2 ">复制链接</button>
+      </section>
+      <main class="bg-white mt-4 overflow-x-auto">
+        <svg class="m-auto" version="1.0" xmlns="http://www.w3.org/2000/svg" width="1000" height="1000">
+
+        </svg>
+      </main>
+      <p class="mt-4">Created By <a class="underline" href="https://github.com/cg37" target="_blank">Craig</a></p>
+    </div>
+
+  </body>
   <title>Regexper</title>
 
 </head>
@@ -10,6 +42,24 @@
 
 </body>
 <script>
+  let svg = document.querySelector('svg')
+  let g
+
+  const zoom = d3.zoom().on("zoom", e => {
+    d3.select(g).attr("transform". (transform = e.transform))
+  })
+
+  const brush = d3.brush
+
+  let hash = location.hash.slice(1)
+  if (hash) {
+    regularExpressionInput.value = decodeURIComponent(hash)
+    draw()
+  }
+
+
+
+  debugger
   function parseRegExp(input) {
 
     let str = input // '(foo){2,55}?foo(b(ar)|baz|baa)[baz]' // '(foo+|()|aaaa)*b(a[a-z0-9_-]){2,}?(baz|baa)+|baaaa'
