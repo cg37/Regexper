@@ -67,8 +67,17 @@
     svg.setAttribute("height", box.height)
 
     location.hash = encodeURIComponent(regularExpressionInput.value)
-
   }
+  function download(){
+    let text = '<?xml version="1.0"?>' + svg.outerHTML
+    let file = new Blob([text],{type: 'image/svg+xml'})
+    let url = URL.createObjectURL(file)
+    let a = document.createElement('a')
+    a.href = url
+    a.download = `RegExp-graph-${regularExpressionInput.value}.svg`
+    a.click()
+  }
+
   function parseRegExp(input) {
 
     let str = input // '(foo){2,55}?foo(b(ar)|baz|baa)[baz]' // '(foo+|()|aaaa)*b(a[a-z0-9_-]){2,}?(baz|baa)+|baaaa'
