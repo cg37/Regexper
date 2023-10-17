@@ -23,8 +23,8 @@
                 id="regularExpressionInput">^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@#$%^&+=])(?!.*\s).{8,16}$</textarea>
       <section class="flex space-x-4">
         <button class="bg-blue-400 px-4 py-2 mr-auto" onClick="draw()">绘制</button>
-        <button class="bg-blue-400 px-4 py-2 " onClick="download()">下载SVG</button>
-        <button class="bg-blue-400 px-4 py-2 " onClick="downloadPNG">下载PNG</button>
+        <button class="bg-blue-400 px-4 py-2 " onClick="downloadSVG()">下载SVG</button>
+        <button class="bg-blue-400 px-4 py-2 " onClick="downloadPNG()">下载PNG</button>
         <button class="bg-blue-400 px-4 py-2 ">复制链接</button>
       </section>
       <main class="bg-white mt-4 overflow-x-auto">
@@ -68,7 +68,7 @@
 
     location.hash = encodeURIComponent(regularExpressionInput.value)
   }
-  function download(){
+  function downloadSVG(){
     let text = '<?xml version="1.0"?>' + svg.outerHTML
     let file = new Blob([text],{type: 'image/svg+xml'})
     let url = URL.createObjectURL(file)
@@ -76,6 +76,30 @@
     a.href = url
     a.download = `RegExp-graph-${regularExpressionInput.value}.svg`
     a.click()
+  }
+
+  function downloadPNG(){
+    let text = '<?xml version="1.0"?>' + svg.outerHTML
+    let file = new Blob([text], {type: "image/svg+xml"})
+    let url = URL.createObjectURL(file)
+    let img = document.createElement("img")
+    img.src = url
+    img.onload = ()=>{
+      let canvas = document.createElement("canvas")
+      canvas.width = svg.getAttribute('width')
+      canvas.height = svg.getAttribute('height')
+      let ctx = canvas.getContext('2d')
+      ctx.fillStyle = "white"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+
+      let url = canvas.toDataURL('image/png')
+      let a = document.createElement('a')
+      a.href=url
+      a.download = `RegExp-${regularExpressionInput.value}.png`
+      a.click()
+
+    }
   }
 
   function parseRegExp(input) {
